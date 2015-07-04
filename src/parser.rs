@@ -6,11 +6,18 @@ use collections::String;
 use collections::string::ToString;
 
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum HttpRequestParserKind {
+	Http1,
+	Ssdp
+}
+
 pub struct HttpRequestParser {
 	buffer: Vec<u8>,
 	pos: usize,
 	line_num: u16,
 	headers_parsed: bool,
+	kind: HttpRequestParserKind,
 
 	msg: HttpRequestMessage
 }
@@ -35,8 +42,13 @@ impl HttpRequestParser {
 			pos: 0,
 			line_num: 0,
 			headers_parsed: false,
+			kind: HttpRequestParserKind::Http1,
 			msg: HttpRequestMessage::empty()
 		}
+	}
+
+	pub fn set_kind(&mut self, kind: HttpRequestParserKind) {
+		self.kind = kind;
 	}
 
 	pub fn is_first_line_parsed(&self) -> bool {
@@ -89,7 +101,7 @@ impl HttpRequestParser {
 							}
 
 							if self.line_num == 0 {
-								try!(HttpRequestParser::parse_first_line(&mut self.msg, line));
+								try!(HttpRequestParser::parse_first_line(&mut self.msg, line, &self.kind));
 							} else {
 								try!(HttpRequestParser::parse_line(&mut self.msg, line));
 							}
@@ -114,23 +126,39 @@ impl HttpRequestParser {
 		Ok(HttpRequestParserState::MoreDataRequired)
 	}
 
-	fn parse_first_line(msg: &mut HttpRequestMessage, line: &[u8]) -> Result<(), HttpRequestParserError> {
+	fn parse_first_line(msg: &mut HttpRequestMessage, line: &[u8], kind: &HttpRequestParserKind) -> Result<(), HttpRequestParserError> {
 		let str = from_utf8(line);
 		if !str.is_ok() { return Err(HttpRequestParserError::InvalidString); }
 		let str = str.unwrap();
 
 		let mut middle = str;
 
-		if str.starts_with("GET") {
-			msg.method = HttpMethod::Get;
-			middle = &str[4..];
-		} else if str.starts_with("HEAD") {
-			msg.method = HttpMethod::Head;
-			middle = &str[5..];
-		} else if str.starts_with("POST") {
-			msg.method = HttpMethod::Post;
-			middle = &str[5..];
-		} else {
+		let http_methods = [("GET", HttpMethod::Get), ("HEAD", HttpMethod::Head), ("POST", HttpMethod::Post)];
+		let ssdp_methods = [("NOTIFY", HttpMethod::Notify), ("M-SEARCH", HttpMethod::MSearch)];
+
+		let method = {			
+			let mut find_method = |methods: &[(&str, HttpMethod)]| {
+				for m in methods {
+					if str.starts_with(m.0) {
+						msg.method = m.1;
+						middle = &str[(m.0.len() + 1)..];
+
+						return true;
+					}
+				}
+
+				false
+			};
+
+			let mut found = find_method(&http_methods);
+			if *kind == HttpRequestParserKind::Ssdp {
+				found = found || find_method(&ssdp_methods);
+			}
+
+			found
+		};
+
+		if method == false {
 			return Err(HttpRequestParserError::LineParseError(str.to_string()));
 		}
 

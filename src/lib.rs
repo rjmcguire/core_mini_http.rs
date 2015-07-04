@@ -38,7 +38,9 @@ use std::collections::HashMap;
 mod http;
 mod router;
 mod parser;
+mod ssdp;
 
 pub use http::*;
 pub use router::*;
 pub use parser::*;
+pub use ssdp::*;

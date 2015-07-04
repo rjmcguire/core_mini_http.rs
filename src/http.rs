@@ -12,7 +12,9 @@ pub enum HttpMethod {
 	Head,
 	Put,
 	Delete,
-	Options
+	Options,
+	Notify,
+	MSearch
 }
 
 #[derive(Debug, Eq, PartialEq)]
