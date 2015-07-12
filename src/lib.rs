@@ -39,8 +39,10 @@ mod http;
 mod router;
 mod parser;
 mod ssdp;
+mod url;
 
 pub use http::*;
 pub use router::*;
 pub use parser::*;
 pub use ssdp::*;
+pub use url::*;
