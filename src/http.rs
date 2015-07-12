@@ -17,6 +17,21 @@ pub enum HttpMethod {
 	MSearch
 }
 
+impl HttpMethod {
+	pub fn to_string(&self) -> String {
+		match *self {
+			HttpMethod::Get => "GET",
+			HttpMethod::Post => "POST",
+			HttpMethod::Head => "HEAD",
+			HttpMethod::Put => "PUT",
+			HttpMethod::Delete => "DELETE",
+			HttpMethod::Options => "OPTIONS",
+			HttpMethod::Notify => "NOTIFY",
+			HttpMethod::MSearch => "M-SEARCH"
+		}.to_string()
+	}
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub enum HttpContentType {
 	Unknown,
@@ -42,6 +57,32 @@ impl HttpRequestMessage {
 			body: Vec::new()
 		}
 	}
+
+	pub fn to_bytes(&self) -> Vec<u8> {
+		let mut ret = Vec::new();
+		
+		fn output_line(r: &mut Vec<u8>, s: &str) {
+			let nl = b"\r\n";
+			for b in s.bytes() {
+				r.push(b);
+			}
+			for b in nl {
+				r.push(*b);
+			}
+		}
+
+		output_line(&mut ret, format!("{} {} HTTP/{}", self.method.to_string(), self.url, self.http_version).as_str());		
+
+		for (key, val) in &self.headers {
+			output_line(&mut ret, format!("{}: {}", key, val).as_str());
+		}
+
+		output_line(&mut ret, "");
+
+		ret.push_all(&self.body);
+
+		ret
+	}	
 }
 
 impl HttpHeaders for HttpRequestMessage {

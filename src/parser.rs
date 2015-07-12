@@ -77,7 +77,6 @@ impl HttpRequestParser {
 						if f2 == '\n' as u8 {
 							// line found
 							let line = &self.buffer[self.pos..i];
-							//println!("line: [{}..{}]", self.pos, i);
 
 							self.pos = i + 2;							
 
