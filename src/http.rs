@@ -280,6 +280,16 @@ impl HttpHeaders for HttpResponseMessage {
 }
 
 impl HttpResponseMessage {
+	pub fn empty() -> HttpResponseMessage {
+		HttpResponseMessage {
+			response_code: 0,
+			response_status: "".to_string(),
+			http_version: "".to_string(),
+			headers: BTreeMap::new(),
+			body: Vec::new()
+		}
+	}
+
 	pub fn to_bytes(&self) -> Vec<u8> {
 		let mut ret = Vec::new();
 		

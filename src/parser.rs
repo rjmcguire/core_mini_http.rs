@@ -42,6 +42,10 @@ impl HttpParser {
 		HttpParser::new(HttpMessage::Request(HttpRequestMessage::empty()))
 	}
 
+	pub fn new_response() -> HttpParser {
+		HttpParser::new(HttpMessage::Response(HttpResponseMessage::empty()))
+	}
+
 	pub fn is_first_line_parsed(&self) -> bool {
 		self.line_num > 0
 	}
@@ -98,7 +102,7 @@ impl HttpParser {
 							if self.line_num == 0 {
 								match self.msg {
 									HttpMessage::Request(ref mut m) => try!(HttpParser::parse_first_request_line(m, line)),
-									_ => { }
+									HttpMessage::Response(ref mut m) => try!(HttpParser::parse_first_response_line(m, line))
 								}
 								
 							} else {
@@ -157,7 +161,7 @@ impl HttpParser {
 
 		if str.ends_with("HTTP/1.1") {
 			msg.http_version = "1.1".to_string();
-		} else if str.ends_with("HTTP/1.0") {
+		} else if str.ends_with("HTTP/1.0") || str.ends_with("HTTP/1") {
 			msg.http_version = "1.0".to_string();
 		}
 
@@ -168,6 +172,41 @@ impl HttpParser {
 		msg.url = url.to_string();
 
 		return Ok(());
+	}
+
+	fn parse_first_response_line(msg: &mut HttpResponseMessage, line: &[u8]) -> Result<(), HttpParserError> {
+		let str = from_utf8(line);
+		if !str.is_ok() { return Err(HttpParserError::InvalidString); }
+		let str = str.unwrap();
+
+		let split: Vec<&str> = str.splitn(3, " ").collect();
+		if split.len() != 3 { return Err(HttpParserError::LineParseError(str.to_string())); }
+
+		match split.get(0) {
+			Some(&"HTTP/1.1") => msg.http_version = "1.1".to_string(),
+			Some(&"HTTP/1.0") | Some(&"HTTP/1") => msg.http_version = "1.0".to_string(),
+			_ => { return Err(HttpParserError::LineParseError(str.to_string())); }
+		}
+
+		match split.get(1) {
+			Some(code) => {
+				if let Ok(code_num) = code.parse::<u16>() {
+					msg.response_code = code_num;
+				} else {
+					return Err(HttpParserError::LineParseError(str.to_string()));
+				}
+			}
+			_ => { return Err(HttpParserError::LineParseError(str.to_string())); }
+		}
+
+		match split.get(2) {
+			Some(status) => {
+				msg.response_status = status.to_string();
+			}
+			_ => { return Err(HttpParserError::LineParseError(str.to_string())); }
+		}
+
+		Ok(())
 	}
 
 	fn parse_header_line(msg: &mut HttpMessage, line: &[u8]) -> Result<(), HttpParserError> {
@@ -202,10 +241,17 @@ impl HttpParser {
 	}
 
 	pub fn get_request(&self) -> Option<&HttpRequestMessage> {
-		match self.msg {
-			HttpMessage::Request(ref r) => Some(r),
-			HttpMessage::Response(_) => None	
+		if let HttpMessage::Request(ref r) = self.msg {
+			return Some(r);
 		}
+		None
+	}
+
+	pub fn get_response(&self) -> Option<&HttpResponseMessage> {
+		if let HttpMessage::Response(ref r) = self.msg {
+			return Some(r);
+		}
+		None
 	}
 }
 
@@ -243,8 +289,39 @@ mod tests {
 		}
 		*/
 
-		let req = parser.get_request();
+		let req = parser.get_request().unwrap();
 		println!("parsed: {:?}", req);
+	}
+
+
+	#[test]
+	pub fn test_response_parsing() {
+		let msg = b"HTTP/1.1 200 OK\r\n\
+Date: Mon, 23 May 2005 22:38:34 GMT\r\n\
+Server: Apache/1.3.3.7 (Unix) (Red-Hat/Linux)\r\n\
+Last-Modified: Wed, 08 Jan 2003 23:11:55 GMT\r\n\
+ETag: \"3f80f-1b6-3e1cb03b\"\r\n\
+Content-Type: text/html; charset=UTF-8\r\n\
+Content-Length: 138\r\n\
+Accept-Ranges: bytes\r\n\
+Connection: close\r\n\
+\r\n\
+<html>\r\n\
+<head>\r\n\
+  <title>An Example Page</title>\r\n\
+</head>\r\n\
+<body>\r\n\
+  Hello World, this is a very simple HTML document.\r\n\
+</body>\r\n\
+</html>";
+
+		let mut parser = HttpParser::new_response();
+		parser.parse_bytes(msg).unwrap();
+
+		let resp = parser.get_response().unwrap();
+		println!("parsed: {:?}", resp);
+
+
 	}
 	
 
