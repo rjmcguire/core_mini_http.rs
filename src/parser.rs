@@ -67,7 +67,10 @@ impl HttpParser {
 
             let cl = self.msg.content_length();
             if cl.is_some() {
-            	return cl.unwrap() - self.msg.get_body().len() as u32;
+            	let len = cl.unwrap();
+            	let r = len as i32 - self.msg.get_body().len() as i32;
+            	if r <= 0 { return 0; }
+            	return r as u32;
             }
         }
 
@@ -269,11 +272,14 @@ mod tests {
 	
 
 	use super::*;
-
+	use super::super::{HttpRequestMessage};
 
 	use core::prelude::*;
 	use std::prelude::*;
 	use collections::vec::Vec;
+
+	use std::io::prelude::*;
+	use std::net::TcpStream;
 
 	#[test]
 	pub fn test_request_parsing() {
@@ -323,7 +329,38 @@ Connection: close\r\n\
 
 
 	}
-	
 
+
+	#[test]
+	pub fn test_http_client() {		
+	    let mut stream = TcpStream::connect("clients3.google.com:80").unwrap();
+
+	    let request = HttpRequestMessage::new_get("/generate_204", "clients3.google.com");
+
+	    let _ = stream.write(&request.to_bytes());
+	    let mut response_parser = HttpParser::new_response();
+	    loop {
+	    	let mut buf = [0; 4096];
+	    	let r = stream.read(&mut buf);
+	    	if !r.is_ok() {
+	    		panic!("err")
+	    	}
+	    	let read_bytes = r.unwrap();
+	    	if read_bytes == 0 {
+	    		break;
+	    	}
+
+	    	let parsed = response_parser.parse_bytes(&buf[..read_bytes]);
+	    	if !parsed.is_ok() {
+	    		panic!("parser borked");
+	    	}
+
+	    	if response_parser.read_how_many_bytes() == 0 {
+	    		break;
+	    	}
+	    }
+
+	    println!("response: {:?}", response_parser.get_response().unwrap());
+	}
 }
 

@@ -88,6 +88,19 @@ impl HttpRequestMessage {
 		}
 	}
 
+	pub fn new_get(url: &str, host: &str) -> HttpRequestMessage {
+		let mut headers = BTreeMap::new();
+		headers.insert("Host".to_string(), host.to_string());
+
+		HttpRequestMessage {
+			method: HttpMethod::Get,
+			http_version: "1.1".to_string(),
+			url: url.to_string(),
+			headers: headers,
+			body: Vec::new()
+		}
+	}
+
 	pub fn to_bytes(&self) -> Vec<u8> {
 		let mut ret = Vec::new();
 		
