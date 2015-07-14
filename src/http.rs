@@ -5,6 +5,36 @@ use collections::String;
 use collections::string::ToString;
 use collections::BTreeMap;
 
+pub enum HttpMessage {
+	Request(HttpRequestMessage),
+	Response(HttpResponseMessage)
+}
+
+impl HttpMessage {
+	pub fn get_body(&self) -> &Vec<u8> {
+		match *self {
+			HttpMessage::Request(ref r) => &r.body,
+			HttpMessage::Response(ref r) => &r.body
+		}		
+	}
+
+	pub fn get_body_mut(&mut self) -> &mut Vec<u8> {
+		match *self {
+			HttpMessage::Request(ref mut r) => &mut r.body,
+			HttpMessage::Response(ref mut r) => &mut r.body
+		}		
+	}
+}
+
+impl HttpHeaders for HttpMessage {
+	fn get_raw_headers(&self) -> &BTreeMap<String, String> {
+		match *self {
+			HttpMessage::Request(ref r) => &r.headers,
+			HttpMessage::Response(ref r) => &r.headers
+		}
+	}
+}
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum HttpMethod {
 	Get,
@@ -93,6 +123,7 @@ impl HttpHeaders for HttpRequestMessage {
 
 pub trait HttpHeaders {
 	fn get_raw_headers(&self) -> &BTreeMap<String, String>;
+	//fn get_mut_raw_headers(&mut self) -> &mut BTreeMap<String, String>;
 
 	fn get_raw_header(&self, key: &str) -> Option<&String> {
 		let h = self.get_raw_headers();
@@ -240,6 +271,12 @@ pub struct HttpResponseMessage {
 	pub http_version: String,
 	pub headers: BTreeMap<String, String>,
 	pub body: Vec<u8>
+}
+
+impl HttpHeaders for HttpResponseMessage {
+	fn get_raw_headers(&self) -> &BTreeMap<String, String> {
+		&self.headers
+	}
 }
 
 impl HttpResponseMessage {

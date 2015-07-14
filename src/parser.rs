@@ -5,37 +5,41 @@ use collections::vec::*;
 use collections::String;
 use collections::string::ToString;
 
-pub struct HttpRequestParser {
+pub struct HttpParser {
 	buffer: Vec<u8>,
 	pos: usize,
 	line_num: u16,
 	headers_parsed: bool,
 
-	msg: HttpRequestMessage
+	msg: HttpMessage
 }
 
 #[derive(Debug)]
-pub enum HttpRequestParserState {
+pub enum HttpParserState {
 	MoreDataRequired,
 	Complete
 }
 
 #[derive(Debug)]
-pub enum HttpRequestParserError {
+pub enum HttpParserError {
 	InvalidString,
 	HeaderError,
 	LineParseError(String)
 }
 
-impl HttpRequestParser {
-	pub fn new() -> HttpRequestParser {
-		HttpRequestParser {
+impl HttpParser {
+	pub fn new(msg: HttpMessage) -> HttpParser {
+		HttpParser {
 			buffer: Vec::new(),
 			pos: 0,
 			line_num: 0,
 			headers_parsed: false,
-			msg: HttpRequestMessage::empty()
+			msg: msg
 		}
+	}
+
+	pub fn new_request() -> HttpParser {
+		HttpParser::new(HttpMessage::Request(HttpRequestMessage::empty()))
 	}
 
 	pub fn is_first_line_parsed(&self) -> bool {
@@ -48,21 +52,26 @@ impl HttpRequestParser {
 
 	pub fn read_how_many_bytes(&self) -> u32 {
 		if self.is_first_line_parsed() && self.are_headers_parsed() {
-            if self.get_request().method == HttpMethod::Get || self.get_request().method == HttpMethod::Head {
-            	return 0;
-            }
+			match self.msg {
+				HttpMessage::Request(ref req) => {
+					if req.method == HttpMethod::Get || req.method == HttpMethod::Head {
+		            	return 0;
+		            }
+				}
+				HttpMessage::Response(_) => {}
+			}            
 
             let cl = self.msg.content_length();
             if cl.is_some() {
-            	return cl.unwrap() - self.msg.body.len() as u32;
+            	return cl.unwrap() - self.msg.get_body().len() as u32;
             }
         }
 
         return 1;
 	}
 
-	pub fn parse_bytes(&mut self, data: &[u8]) -> Result<HttpRequestParserState, HttpRequestParserError> {
-		if data.len() == 0 { return Ok(HttpRequestParserState::MoreDataRequired); }
+	pub fn parse_bytes(&mut self, data: &[u8]) -> Result<HttpParserState, HttpParserError> {
+		if data.len() == 0 { return Ok(HttpParserState::MoreDataRequired); }
 
 		self.buffer.push_all(data);
 
@@ -87,9 +96,13 @@ impl HttpRequestParser {
 							}
 
 							if self.line_num == 0 {
-								try!(HttpRequestParser::parse_first_line(&mut self.msg, line));
+								match self.msg {
+									HttpMessage::Request(ref mut m) => try!(HttpParser::parse_first_request_line(m, line)),
+									_ => { }
+								}
+								
 							} else {
-								try!(HttpRequestParser::parse_line(&mut self.msg, line));
+								try!(HttpParser::parse_header_line(&mut self.msg, line));
 							}
 
 							self.line_num += 1;
@@ -102,19 +115,20 @@ impl HttpRequestParser {
 		if self.headers_parsed {
 			{
 				let s = &self.buffer[(self.pos)..];
-				self.msg.body.push_all(s);
+				let body = self.msg.get_body_mut();
+				body.push_all(s);
 			}
 			self.buffer.clear();
 			self.pos = 0;
 		}
 
 
-		Ok(HttpRequestParserState::MoreDataRequired)
+		Ok(HttpParserState::MoreDataRequired)
 	}
 
-	fn parse_first_line(msg: &mut HttpRequestMessage, line: &[u8]) -> Result<(), HttpRequestParserError> {
+	fn parse_first_request_line(msg: &mut HttpRequestMessage, line: &[u8]) -> Result<(), HttpParserError> {
 		let str = from_utf8(line);
-		if !str.is_ok() { return Err(HttpRequestParserError::InvalidString); }
+		if !str.is_ok() { return Err(HttpParserError::InvalidString); }
 		let str = str.unwrap();
 
 		let mut middle = str;
@@ -138,7 +152,7 @@ impl HttpRequestParser {
 		};
 
 		if method == false {
-			return Err(HttpRequestParserError::LineParseError(str.to_string()));
+			return Err(HttpParserError::LineParseError(str.to_string()));
 		}
 
 		if str.ends_with("HTTP/1.1") {
@@ -148,7 +162,7 @@ impl HttpRequestParser {
 		}
 
 		let l = middle.rfind("HTTP/1");
-		if l.is_none() { return Err(HttpRequestParserError::LineParseError(str.to_string())); }
+		if l.is_none() { return Err(HttpParserError::LineParseError(str.to_string())); }
 
 		let url = &middle[..(l.unwrap() - 1)];
 		msg.url = url.to_string();
@@ -156,32 +170,42 @@ impl HttpRequestParser {
 		return Ok(());
 	}
 
-	fn parse_line(msg: &mut HttpRequestMessage, line: &[u8]) -> Result<(), HttpRequestParserError> {
+	fn parse_header_line(msg: &mut HttpMessage, line: &[u8]) -> Result<(), HttpParserError> {
 		let str = from_utf8(line);
 		if str.is_ok() {
 			let str = str.unwrap();
 			
 			let sep = str.find(": ");
 			if sep.is_none() {
-				return Err(HttpRequestParserError::HeaderError);
+				return Err(HttpParserError::HeaderError);
 			}
 			let sep = sep.unwrap();
 
 			let key = &str[0..sep];
 			let val = &str[sep + 2..];
 
-			msg.headers.insert(key.to_string(), val.to_string());
+			let headers = match *msg {
+				HttpMessage::Request(ref mut r) => &mut r.headers,
+				HttpMessage::Response(ref mut r) => &mut r.headers
+			};
+			headers.insert(key.to_string(), val.to_string());
 
 		} else {
-			msg.http_version = "fail".to_string();
-			return Err(HttpRequestParserError::InvalidString);
+			return Err(HttpParserError::InvalidString);
 		}
 
 		return Ok(());
 	}
 
-	pub fn get_request(&self) -> &HttpRequestMessage {
+	pub fn get_message(&self) -> &HttpMessage {
 		&self.msg
+	}
+
+	pub fn get_request(&self) -> Option<&HttpRequestMessage> {
+		match self.msg {
+			HttpMessage::Request(ref r) => Some(r),
+			HttpMessage::Response(_) => None	
+		}
 	}
 }
 
@@ -209,7 +233,7 @@ mod tests {
 	pub fn test_request_parsing() {
 		let msg = "GET /index.html HTTP/1.1\r\nHost: www.example.com\r\n\r\nbody";
 
-		let mut parser = HttpRequestParser::new();
+		let mut parser = HttpParser::new_request();
 		let bytes = &msg.bytes();
 		let bytes: Vec<u8> = bytes.clone().collect();
 		parser.parse_bytes(&bytes).unwrap();
