@@ -250,8 +250,22 @@ impl HttpParser {
 		None
 	}
 
+	pub fn into_request(self) -> Option<HttpRequestMessage> {
+		if let HttpMessage::Request(r) = self.msg {
+			return Some(r);
+		}
+		None
+	}
+
 	pub fn get_response(&self) -> Option<&HttpResponseMessage> {
 		if let HttpMessage::Response(ref r) = self.msg {
+			return Some(r);
+		}
+		None
+	}
+
+	pub fn into_response(self) -> Option<HttpResponseMessage> {
+		if let HttpMessage::Response(r) = self.msg {
 			return Some(r);
 		}
 		None
