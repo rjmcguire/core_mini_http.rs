@@ -23,18 +23,19 @@ impl HttpServer {
         let mut parser = HttpParser::new_request();
 
         loop {
-            let mut buf = [0; 1];
+            let mut buf = [0; 1024];
             let r = stream.read(&mut buf);
             if !r.is_ok() {
                 panic!("stream broken");
             }
 
-            if r.unwrap() == 0 {
+            let read_bytes = r.unwrap();
+            if read_bytes == 0 {
                 println!("stream endeth");
                 break;
             }
 
-            let parsed = parser.parse_bytes(&buf);
+            let parsed = parser.parse_bytes(&buf[..read_bytes]);
             if !parsed.is_ok() {
                 panic!("parser borked");
             }
