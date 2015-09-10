@@ -3,7 +3,7 @@ mod ssdp_tests {
 	
 
 	use super::*;
-	use super::super::{HttpRequestParser};
+	use super::super::{HttpParser, HttpMessage, HttpRequestMessage};
 
 
 	use core::prelude::*;
@@ -19,7 +19,7 @@ mod ssdp_tests {
 						 \r\n";
 
 
-		let mut parser = HttpRequestParser::new();
+		let mut parser = HttpParser::new(HttpMessage::Request(HttpRequestMessage::empty()));
 		let bytes = &discovery.bytes();
 		let bytes: Vec<u8> = bytes.clone().collect();
 		parser.parse_bytes(&bytes).unwrap();

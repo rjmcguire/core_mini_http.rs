@@ -4,10 +4,10 @@ use collections::string::ToString;
 
 #[derive(Debug)]
 pub struct Url {
-	scheme: String,
-	port: Option<u16>,
-	host: String,
-	full_path: String
+	pub scheme: String,
+	pub port: Option<u16>,
+	pub host: String,
+	pub full_path: String
 }
 
 impl Url {

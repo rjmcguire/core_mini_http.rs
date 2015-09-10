@@ -3,6 +3,7 @@
 #![feature(alloc)]
 #![feature(no_std)]
 #![feature(collections)]
+#![feature(convert)]
 #![feature(vec_push_all)]
 
 #[macro_use]

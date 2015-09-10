@@ -4,6 +4,36 @@ use collections::String;
 use collections::string::ToString;
 use collections::BTreeMap;
 
+pub enum HttpMessage {
+	Request(HttpRequestMessage),
+	Response(HttpResponseMessage)
+}
+
+impl HttpMessage {
+	pub fn get_body(&self) -> &Vec<u8> {
+		match *self {
+			HttpMessage::Request(ref r) => &r.body,
+			HttpMessage::Response(ref r) => &r.body
+		}		
+	}
+
+	pub fn get_body_mut(&mut self) -> &mut Vec<u8> {
+		match *self {
+			HttpMessage::Request(ref mut r) => &mut r.body,
+			HttpMessage::Response(ref mut r) => &mut r.body
+		}		
+	}
+}
+
+impl HttpHeaders for HttpMessage {
+	fn get_raw_headers(&self) -> &BTreeMap<String, String> {
+		match *self {
+			HttpMessage::Request(ref r) => &r.headers,
+			HttpMessage::Response(ref r) => &r.headers
+		}
+	}
+}
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum HttpMethod {
 	Get,
@@ -14,6 +44,21 @@ pub enum HttpMethod {
 	Options,
 	Notify,
 	MSearch,
+}
+
+impl HttpMethod {
+	pub fn to_string(&self) -> String {
+		match *self {
+			HttpMethod::Get => "GET",
+			HttpMethod::Post => "POST",
+			HttpMethod::Head => "HEAD",
+			HttpMethod::Put => "PUT",
+			HttpMethod::Delete => "DELETE",
+			HttpMethod::Options => "OPTIONS",
+			HttpMethod::Notify => "NOTIFY",
+			HttpMethod::MSearch => "M-SEARCH"
+		}.to_string()
+	}
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -41,6 +86,45 @@ impl HttpRequestMessage {
             body: Vec::new()
         }
     }
+
+	pub fn new_get(url: &str, host: &str) -> HttpRequestMessage {
+		let mut headers = BTreeMap::new();
+		headers.insert("Host".to_string(), host.to_string());
+
+		HttpRequestMessage {
+			method: HttpMethod::Get,
+			http_version: "1.1".to_string(),
+			url: url.to_string(),
+			headers: headers,
+			body: Vec::new()
+		}
+	}
+
+	pub fn to_bytes(&self) -> Vec<u8> {
+		let mut ret = Vec::new();
+		
+		fn output_line(r: &mut Vec<u8>, s: &str) {
+			let nl = b"\r\n";
+			for b in s.bytes() {
+				r.push(b);
+			}
+			for b in nl {
+				r.push(*b);
+			}
+		}
+
+		output_line(&mut ret, format!("{} {} HTTP/{}", self.method.to_string(), self.url, self.http_version).as_str());		
+
+		for (key, val) in &self.headers {
+			output_line(&mut ret, format!("{}: {}", key, val).as_str());
+		}
+
+		output_line(&mut ret, "");
+
+		ret.push_all(&self.body);
+
+		ret
+	}	
 }
 
 impl HttpHeaders for HttpRequestMessage {
@@ -51,6 +135,7 @@ impl HttpHeaders for HttpRequestMessage {
 
 pub trait HttpHeaders {
     fn get_raw_headers(&self) -> &BTreeMap<String, String>;
+	//fn get_mut_raw_headers(&mut self) -> &mut BTreeMap<String, String>;
 
     fn get_raw_header(&self, key: &str) -> Option<&String> {
         let h = self.get_raw_headers();
@@ -195,10 +280,26 @@ pub struct HttpResponseMessage {
     pub body: Vec<u8>
 }
 
-impl HttpResponseMessage {
-    pub fn to_bytes(&self) -> Vec<u8> {
-        let mut ret = Vec::new();
+impl HttpHeaders for HttpResponseMessage {
+	fn get_raw_headers(&self) -> &BTreeMap<String, String> {
+		&self.headers
+	}
+}
 
+impl HttpResponseMessage {
+	pub fn empty() -> HttpResponseMessage {
+		HttpResponseMessage {
+			response_code: 0,
+			response_status: "".to_string(),
+			http_version: "".to_string(),
+			headers: BTreeMap::new(),
+			body: Vec::new()
+		}
+	}
+
+	pub fn to_bytes(&self) -> Vec<u8> {
+		let mut ret = Vec::new();
+        
         fn output_line(r: &mut Vec<u8>, s: &str) {
             let nl = b"\r\n";
             for b in s.bytes() {

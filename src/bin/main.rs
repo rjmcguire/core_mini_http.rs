@@ -16,21 +16,22 @@ impl HttpServer {
     fn handle_client(&self, stream: TcpStream) {
         let mut stream = stream;
 
-        let mut parser = HttpRequestParser::new();
+        let mut parser = HttpParser::new_request();
 
         loop {
-            let mut buf = [0; 1];
+            let mut buf = [0; 1024];
             let r = stream.read(&mut buf);
             if !r.is_ok() {
                 panic!("stream broken");
             }
 
-            if r.unwrap() == 0 {
+            let read_bytes = r.unwrap();
+            if read_bytes == 0 {
                 println!("stream endeth");
                 break;
             }
 
-            let parsed = parser.parse_bytes(&buf);
+            let parsed = parser.parse_bytes(&buf[..read_bytes]);
             if !parsed.is_ok() {
                 panic!("parser borked");
             }
@@ -44,9 +45,9 @@ impl HttpServer {
 
         stream.shutdown(Shutdown::Read).unwrap();
 
-        let res = http_router(&self.routes, &parser.get_request());
+        let res = http_router(&self.routes, &parser.get_request().unwrap());
         if res.is_ok() {
-            let resp = res.unwrap().execute(&parser.get_request());
+            let resp = res.unwrap().execute(&parser.get_request().unwrap());
             if resp.is_ok() {
                 let resp = resp.unwrap();
                 stream.write(&resp.to_bytes()).unwrap();
