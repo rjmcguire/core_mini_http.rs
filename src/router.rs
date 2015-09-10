@@ -247,7 +247,7 @@ pub fn http_router<'a>(routes: &'a [Box<HttpRoute + Send + Sync + 'static>], req
 mod tests {
     use super::*;
 
-    use collections::string::ToString;
+    use collections::String;
 
     #[test]
     pub fn test_dynamic_urls() {
