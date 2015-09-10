@@ -234,4 +234,30 @@ impl HttpResponseMessage {
             body: body.bytes().collect()
         }
     }
+
+	pub fn text_utf8(body: &str) -> HttpResponseMessage {
+		let mut headers = BTreeMap::new();
+		headers.insert("Content-Type".to_string(), "text/plain; charset=UTF-8".to_string());
+
+		HttpResponseMessage {
+			response_code: 200,
+			response_status: "OK".to_string(),
+			http_version: "1.1".to_string(),
+			headers: headers,
+			body: body.bytes().collect()
+		}
+	}
+
+	pub fn json_utf8(body: &str) -> HttpResponseMessage {
+		let mut headers = BTreeMap::new();
+		headers.insert("Content-Type".to_string(), "application/json; charset=UTF-8".to_string());
+
+		HttpResponseMessage {
+			response_code: 200,
+			response_status: "OK".to_string(),
+			http_version: "1.1".to_string(),
+			headers: headers,
+			body: body.bytes().collect()
+		}
+	}	
 }
