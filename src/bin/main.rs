@@ -97,6 +97,8 @@ fn main() {
     };
     let server = Arc::new(server);
 
+    println!("Listening on http://127.0.0.1:8088/");
+
     // accept connections and process them, spawning a new thread for each one
     for stream in listener.incoming() {
         let server = server.clone();
