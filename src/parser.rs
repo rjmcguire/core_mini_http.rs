@@ -80,7 +80,6 @@ impl HttpParser {
 		if data.len() == 0 { return Ok(HttpParserState::MoreDataRequired); }
 
 		self.buffer.push_all(data);
-        self.buffer.push_all(data);
 
 		if self.headers_parsed == false {
 			let p = self.pos;
@@ -139,7 +138,6 @@ impl HttpParser {
 		let str = str.unwrap();
 
 		let mut middle = str;
-        let mut middle = str;
 
 		let http_methods = [("GET", HttpMethod::Get), ("HEAD", HttpMethod::Head), ("POST", HttpMethod::Post),
 		                    ("NOTIFY", HttpMethod::Notify), ("M-SEARCH", HttpMethod::MSearch)
@@ -232,7 +230,7 @@ impl HttpParser {
 				HttpMessage::Response(ref mut r) => &mut r.headers
 			};
 			headers.insert(key.to_string(), val.to_string());
-            
+
             Ok(())
         } else {
             return Err(HttpParserError::InvalidString);
