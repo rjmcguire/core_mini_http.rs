@@ -6,12 +6,14 @@ use collections::BTreeMap;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum HttpMethod {
-    Get,
-    Post,
-    Head,
-    Put,
-    Delete,
-    Options,
+	Get,
+	Post,
+	Head,
+	Put,
+	Delete,
+	Options,
+	Notify,
+	MSearch,
 }
 
 #[derive(Debug, Eq, PartialEq)]

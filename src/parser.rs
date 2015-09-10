@@ -116,20 +116,29 @@ impl HttpRequestParser {
         if !str.is_ok() { return Err(HttpRequestParserError::InvalidString); }
         let str = str.unwrap();
 
-        let middle;
+        let mut middle = str;
 
-        if str.starts_with("GET") {
-            msg.method = HttpMethod::Get;
-            middle = &str[4..];
-        } else if str.starts_with("HEAD") {
-            msg.method = HttpMethod::Head;
-            middle = &str[5..];
-        } else if str.starts_with("POST") {
-            msg.method = HttpMethod::Post;
-            middle = &str[5..];
-        } else {
-            return Err(HttpRequestParserError::LineParseError(str.to_string()));
-        }
+		let http_methods = [("GET", HttpMethod::Get), ("HEAD", HttpMethod::Head), ("POST", HttpMethod::Post),
+		                    ("NOTIFY", HttpMethod::Notify), ("M-SEARCH", HttpMethod::MSearch)
+		                   ];
+		let method = {
+			let mut matched = false;
+			for m in &http_methods {
+				if str.starts_with(m.0) {
+					msg.method = m.1;
+					middle = &str[(m.0.len() + 1)..];
+
+					matched = true;
+					break;
+				}
+			}
+
+			matched
+		};
+
+		if method == false {
+			return Err(HttpRequestParserError::LineParseError(str.to_string()));
+		}
 
         if str.ends_with("HTTP/1.1") {
             msg.http_version = String::from("1.1");
