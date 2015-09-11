@@ -25,3 +25,9 @@ And test:
 ```bash
 $ cargo test
 ```
+
+You can also run a small HTTP server on your localhost:
+
+```bash
+$ cargo run
+```
