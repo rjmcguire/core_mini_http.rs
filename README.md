@@ -26,7 +26,7 @@ And test:
 $ cargo test
 ```
 
-You can also run a small HTTP server on your localhost:
+You can also run a small demo HTTP server on your localhost:
 
 ```bash
 $ cargo run
