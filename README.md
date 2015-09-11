@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/hashmismatch/core_mini_http.rs.svg?branch=master)](https://travis-ci.org/hashmismatch/core_mini_http.rs)
+
 # core_mini_http
 
 A small HTTP server.
