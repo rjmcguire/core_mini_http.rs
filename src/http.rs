@@ -121,7 +121,7 @@ impl HttpRequestMessage {
 
 		output_line(&mut ret, "");
 
-		ret.push_all(&self.body);
+		ret.extend_from_slice(&self.body);
 
 		ret
 	}	
@@ -318,7 +318,7 @@ impl HttpResponseMessage {
 
         output_line(&mut ret, "");
 
-        ret.push_all(&self.body);
+        ret.extend_from_slice(&self.body);
 
         ret
     }

@@ -79,7 +79,7 @@ impl HttpParser {
 	pub fn parse_bytes(&mut self, data: &[u8]) -> Result<HttpParserState, HttpParserError> {
 		if data.len() == 0 { return Ok(HttpParserState::MoreDataRequired); }
 
-		self.buffer.push_all(data);
+		self.buffer.extend_from_slice(data);
 
 		if self.headers_parsed == false {
 			let p = self.pos;
@@ -122,7 +122,7 @@ impl HttpParser {
 			{
 				let s = &self.buffer[(self.pos)..];
 				let body = self.msg.get_body_mut();
-				body.push_all(s);
+				body.extend_from_slice(s);
 			}
 			self.buffer.clear();
 			self.pos = 0;
